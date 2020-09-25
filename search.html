@@ -76,23 +76,19 @@
             // $('#suggestions').hide()
     }
 
-    function fillSearchWithSuggestion(query) {
-        $('#search-query').val(query)
-        flushSuggestions()
-        flushResults()
+    function createSearchResults(documentReferences, completeKeywords) {
 
-        console.log('query: ' + query)
+        documentReferences.forEach(index => {
 
-        if (invertedIndex.hasOwnProperty(query)) {
-            documentReferences = invertedIndex[query].doc
-            console.log('docRef: ' + documentReferences)
-            documentReferences.forEach(index => {
+            question = docIndex[index]['question']
+            answer = docIndex[index]['answer']
 
-                question = docIndex[index]['question'].replaceAll(query, '<span class=\"highlighted\">' + query + '</span>')
-                answer = docIndex[index]['answer'].replaceAll(query, '<span class=\"highlighted\">' + query + '</span>')
+            completeKeywords.forEach(query => {
+                question = question.replaceAll(' ' + query + ' ', ' ' + '<span class=\"highlighted\">' + query + '</span>' + ' ')
+                answer = answer.replaceAll(' ' + query + ' ', ' ' + '<span class=\"highlighted\">' + query + '</span>' + ' ')
+            });
 
-                console.log('qestion: ' + docIndex[index]['question'])
-                var result_pair = " \
+            var result_pair = " \
                 <div class=\"card\"> \
                     <div class=\"card-header\" id=\"headingOne\"> \
                         <h2 class=\"mb-0\">  \
@@ -103,32 +99,93 @@
                         <div id=\"ansId-" + resultsId + "\" class=\"card-body\"></div> \
                 </div> \
                 "
-                $('#results').append(result_pair)
-                $('#qstId-' + resultsId).html(question)
-                $('#ansId-' + resultsId).html(answer)
-                resultsId += 1
-            });
+            $('#results').append(result_pair)
+            $('#qstId-' + resultsId).html(question)
+            $('#ansId-' + resultsId).html(answer)
+            resultsId += 1
+        });
+    }
+
+    function fillSearchWithSuggestion(completeKeywords) {
+
+        completeKeywords = completeKeywords.split(',')
+        var completeQuery = completeKeywords.join(' ')
+
+        var documentResultSet = []
+
+        $('#search-query').val(completeQuery)
+        flushSuggestions()
+        flushResults()
+
+        var resultsFlag = false;
+
+        completeKeywords.forEach(query => {
+            if (invertedIndex.hasOwnProperty(query)) {
+                documentResultSet = documentResultSet.concat(invertedIndex[query].doc)
+                resultsFlag = true
+            }
+        });
+
+        let documentResultArray = Array.from(new Set(documentResultSet));
+
+        createSearchResults(documentResultArray, completeKeywords)
+
+        if (resultsFlag == false) {
+            flushResults()
+            $('#suggestions').append("<p id='no-results'> No results found :( </p>")
         }
+    }
+
+    function populateSuggestions(incompleteQuery, lastKeyword, completeKeywords) {
+        results = data[lastKeyword].slice(0, firstNResults)
+        results.forEach(result => {
+            var suggestionString = ('<b>' + incompleteQuery + '</b>' + ' ' + result.replace(lastKeyword, '<b>' + lastKeyword + '</b>'))
+            var args = completeKeywords.concat(result)
+            $('#suggestions').append("<li class='list-group-item' onclick=\"fillSearchWithSuggestion('" + args + "')\">" + suggestionString + "</li>")
+        });
     }
 
     $('#search-query').keyup(function(e) {
         if (e.keyCode != 40 && e.keyCode != 38) {
+
+            var query = $('#search-query').val()
+            query = query.replace(/\s+/g, ' ').trim()
+            var completeKeywords = query.split(' ').slice(0, -1)
+
+            // Enter code
             if (e.keyCode == 13) {
-                $('li.selection').click()
-                flushSuggestions()
+                console.log('Enter pressed')
+                var queryText = $('#search-query').val()
+                if ($('li.selection').length != 0) {
+                    queryText = $('li.selection').text()
+                    $('#search-query').val(queryText)
+                    $('li.selection').click()
+                    return
+                }
+                fillSearchWithSuggestion(query.split(' ').join(','))
             } else {
+                // Tab code
+                if (e.keyCode == 9) {
+                    e.preventDefault();
+                    return
+                }
                 // Flush the elements in the results
                 flushSuggestions()
-                    // Get the query for search
-                var query = $('#search-query').val()
-                    // Populate the results if key found
-                if (data.hasOwnProperty(query)) {
-                    results = data[query].slice(0, firstNResults)
-                    results.forEach(result => {
-                        $('#suggestions').append("<li class='list-group-item' onclick=\"fillSearchWithSuggestion('" + result + "')\">" + result.replaceAll(query, '<b>' + query + '</b>') + "</li>")
-                    });
-                    // $('#suggestions').fadeIn(100)
+
+                var lastKeyword = query.split(' ').slice(-1)[0]
+                var incompleteQuery = query.split(' ').slice(0, -1).join(' ')
+
+                // Space code
+                if (e.keyCode == 32) {
+                    populateSuggestions(query, 'a', completeKeywords)
+                    return
+                }
+                // Populate the results if key found
+                if (data.hasOwnProperty(lastKeyword)) {
+                    populateSuggestions(incompleteQuery, lastKeyword, completeKeywords)
+                        // $('#suggestions').fadeIn(100)
                 } else if (query) {
+                    flushResults()
                     $('#suggestions').append("<p id='no-results'> No results found :( </p>")
                         // $('#suggestions').fadeIn(100)
                 }
@@ -152,6 +209,18 @@
             if ($hlight.prev().length == 0) {
                 $div.eq(-1).addClass('selection')
             }
+        }
+        // Tab code
+        if (e.keyCode == 9) {
+            e.preventDefault();
+            var query = $('#search-query').val()
+            var completeKeywords = query.split(' ').slice(0, -1)
+
+            var firstSuggestion = $('li').first().text() + ' '
+            $('#search-query').val(firstSuggestion)
+            flushSuggestions()
+            populateSuggestions(firstSuggestion, 'a', completeKeywords)
+            return
         }
     })
 </script>
