@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+    <script type="text/javascript" src="sample_indexing.js"></script>
+    <script type="text/javascript" src="inverted_indexing.js"></script>
+    <script type="text/javascript" src="documents.js"></script>
+
+    <title>Elastic Search Engine</title>
+</head>
+
+<style>
+    p {
+        margin-top: 3rem;
+        width: 100%;
+        font-weight: lighter;
+        text-align: center;
+    }
+    
+    b {
+        padding: 0.5px;
+    }
+    
+    .selection {
+        background-color: #e8e8e8;
+    }
+    
+    .accordion {
+        margin-top: 2rem;
+    }
+    
+    .highlighted {
+        background-color: yellow;
+    }
+</style>
+
+<body>
+    <div class="container mt-5">
+
+        <h1 class="text-center">Elastic Search Engine</h1>
+
+        <div class="input-group mt-5">
+            <input type="text" class="form-control" id="search-query" placeholder="Search Keyword" aria-label="Recipient's username" aria-describedby="basic-addon2" autocomplete="off">
+        </div>
+
+        <ul class="list-group list-group-flush" id="suggestions"></ul>
+
+        <div class="accordion" id="results"></div>
+    </div>
+
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.5.1.js" integrity="sha256-QWo7LDvxbWT2tbbQ97B53yJnYU3WhH/C8ycbRAkjPDc=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js" integrity="sha384-9/reFTGAW83EW2RDu2S0VKaIzap3H66lZH81PoYlFhbGU+6BZp6G7niu735Sk7lN" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js" integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV" crossorigin="anonymous"></script>
+</body>
+
+<script>
+    var firstNResults = 10;
+    var resultsId = 0
+
+    function flushSuggestions() {
+        $('#suggestions').empty()
+            // $('#suggestions').hide()
+
+    }
+
+    function flushResults() {
+        $('#results').empty()
+            // $('#suggestions').hide()
+    }
+
+    function fillSearchWithSuggestion(query) {
+        $('#search-query').val(query)
+        flushSuggestions()
+        flushResults()
+
+        console.log('query: ' + query)
+
+        if (invertedIndex.hasOwnProperty(query)) {
+            documentReferences = invertedIndex[query].doc
+            console.log('docRef: ' + documentReferences)
+            documentReferences.forEach(index => {
+
+                question = docIndex[index]['question'].replaceAll(query, '<span class=\"highlighted\">' + query + '</span>')
+                answer = docIndex[index]['answer'].replaceAll(query, '<span class=\"highlighted\">' + query + '</span>')
+
+                console.log('qestion: ' + docIndex[index]['question'])
+                var result_pair = " \
+                <div class=\"card\"> \
+                    <div class=\"card-header\" id=\"headingOne\"> \
+                        <h2 class=\"mb-0\">  \
+                            <button class=\"btn btn-link btn-block text-left\" id=\"qstId-" + resultsId + "\" type=\"button\" data-toggle=\"collapse\" data-target=\"#result-" + resultsId + "\" aria-expanded=\"true\" aria-controls=\"collapseOne\"></button> \
+                        </h2> \
+                    </div> \
+                    <div id=\"result-" + resultsId + "\" class=\"collapse\" aria-labelledby=\"headingOne\" data-parent=\"#results\"> \
+                        <div id=\"ansId-" + resultsId + "\" class=\"card-body\"></div> \
+                </div> \
+                "
+                $('#results').append(result_pair)
+                $('#qstId-' + resultsId).html(question)
+                $('#ansId-' + resultsId).html(answer)
+                resultsId += 1
+            });
+        }
+    }
+
+    $('#search-query').keyup(function(e) {
+        if (e.keyCode != 40 && e.keyCode != 38) {
+            if (e.keyCode == 13) {
+                $('li.selection').click()
+                flushSuggestions()
+            } else {
+                // Flush the elements in the results
+                flushSuggestions()
+                    // Get the query for search
+                var query = $('#search-query').val()
+                    // Populate the results if key found
+                if (data.hasOwnProperty(query)) {
+                    results = data[query].slice(0, firstNResults)
+                    results.forEach(result => {
+                        $('#suggestions').append("<li class='list-group-item' onclick=\"fillSearchWithSuggestion('" + result + "')\">" + result.replaceAll(query, '<b>' + query + '</b>') + "</li>")
+                    });
+                    // $('#suggestions').fadeIn(100)
+                } else if (query) {
+                    $('#suggestions').append("<p id='no-results'> No results found :( </p>")
+                        // $('#suggestions').fadeIn(100)
+                }
+            }
+        }
+    });
+
+    // Arrow keys heighlight
+    $(document).keydown(function(e) {
+        var $hlight = $('li.selection'),
+            $div = $('li');
+        if (e.keyCode == 40) {
+            // Move Down
+            $hlight.removeClass('selection').next().addClass('selection');
+            if ($hlight.next().length == 0) {
+                $div.eq(0).addClass('selection')
+            }
+        } else if (e.keyCode === 38) {
+            // Move Up
+            $hlight.removeClass('selection').prev().addClass('selection');
+            if ($hlight.prev().length == 0) {
+                $div.eq(-1).addClass('selection')
+            }
+        }
+    })
+</script>
+
+</html>
