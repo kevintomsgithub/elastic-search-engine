@@ -154,8 +154,15 @@
 
             // Enter code
             if (e.keyCode == 13) {
-                console.log('Enter pressed')
+
                 var queryText = $('#search-query').val()
+
+                if ($('li').length == 1) {
+                    queryText = $('li').text()
+                    $('#search-query').val(queryText)
+                    $('li').click()
+                    return
+                }
                 if ($('li.selection').length != 0) {
                     queryText = $('li.selection').text()
                     $('#search-query').val(queryText)
@@ -203,12 +210,14 @@
             if ($hlight.next().length == 0) {
                 $div.eq(0).addClass('selection')
             }
+            $('#search-query').val($('li.selection').text() + ' ')
         } else if (e.keyCode === 38) {
             // Move Up
             $hlight.removeClass('selection').prev().addClass('selection');
             if ($hlight.prev().length == 0) {
                 $div.eq(-1).addClass('selection')
             }
+            $('#search-query').val($('li.selection').text() + ' ')
         }
         // Tab code
         if (e.keyCode == 9) {
